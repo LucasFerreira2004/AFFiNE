@@ -23,7 +23,7 @@ export const usePageHelper = (docCollection: Workspace) => {
     (
       mode?: DocMode,
       options: {
-        at?: 'new-tab' | 'tail' | 'active';
+        at?: OpenAtOption;
         show?: boolean;
       } = {
         at: 'active',
@@ -51,7 +51,7 @@ export const usePageHelper = (docCollection: Workspace) => {
   const createEdgelessAndOpen = useCallback(
     (
       options: {
-        at?: 'new-tab' | 'tail' | 'active';
+        at?: OpenAtOption;
         show?: boolean;
       } = {
         at: 'active',
@@ -123,3 +123,11 @@ export const usePageHelper = (docCollection: Workspace) => {
     };
   }, [createEdgelessAndOpen, createPageAndOpen, importFileAndOpen]);
 };
+
+export const OPEN_AT = {
+  NEW_TAB: 'new-tab',
+  TAIL: 'tail',
+  ACTIVE: 'active',
+} as const;
+
+export type OpenAtOption = (typeof OPEN_AT)[keyof typeof OPEN_AT];
