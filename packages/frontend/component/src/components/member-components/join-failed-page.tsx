@@ -11,7 +11,7 @@ export const JoinFailedPage = ({
   error,
 }: {
   inviteInfo?: GetInviteInfoQuery['getInviteInfo'];
-  error?: any;
+  error?: unknown;
 }) => {
   const userFriendlyError = UserFriendlyError.fromAny(error);
   const t = useI18n();
