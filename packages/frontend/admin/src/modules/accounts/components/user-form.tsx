@@ -50,18 +50,20 @@ function UserForm({
   const [changes, setChanges] = useState<Partial<UserInput>>(defaultUser);
 
   const setField = useCallback(
-    <K extends keyof UserInput>(
-      field: K,
-      value: UserInput[K] | ((prev: UserInput[K] | undefined) => UserInput[K])
-    ) => {
-      setChanges(changes => ({
-        ...changes,
-        [field]:
-          typeof value === 'function' ? value(changes[field] as any) : value,
-      }));
-    },
-    []
-  );
+  <K extends keyof UserInput>(
+    field: K,
+    value: UserInput[K] | ((prev: UserInput[K] | undefined) => UserInput[K])
+  ) => {
+    setChanges(changes => ({
+      ...changes,
+      [field]:
+        typeof value === 'function'
+          ? value(changes[field])
+          : value,
+    }));
+  },
+  []
+);
 
   const canSave = useMemo(() => {
     return onValidate(changes);
