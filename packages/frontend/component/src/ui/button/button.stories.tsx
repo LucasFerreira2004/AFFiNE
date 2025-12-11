@@ -5,18 +5,17 @@ import {
 } from '@blocksuite/icons/rc';
 import type { Meta } from '@storybook/react';
 import clsx from 'clsx';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 
 import { Switch } from '../switch';
 import type { ButtonProps } from './button';
 import { Button } from './button';
 import * as styles from './button.stories.css';
+
 export default {
   title: 'UI/Button',
   component: Button,
 } satisfies Meta<ButtonProps>;
-
-// const Template: StoryFn<ButtonProps> = args => <Button {...args} />;
 
 const types: ButtonProps['variant'][] = [
   'primary',
@@ -25,6 +24,7 @@ const types: ButtonProps['variant'][] = [
   'error',
   'success',
 ];
+
 const sizes: ButtonProps['size'][] = ['default', 'large', 'extraLarge'];
 
 const Groups = ({
@@ -67,98 +67,86 @@ export const WithIcon = () => {
 
 export const Loading = () => {
   const [loading, setLoading] = useState(false);
-
   const toggleLoading = useCallback(() => setLoading(v => !v), []);
 
   useEffect(() => {
-    setInterval(toggleLoading, 1000);
+    const interval = setInterval(toggleLoading, 1000);
+    return () => clearInterval(interval);
   }, [toggleLoading]);
 
   return <Groups loading={loading} prefix={<FolderIcon />} />;
 };
 
+type OverrideKey =
+  | 'bg'
+  | 'textColor'
+  | 'border'
+  | 'fontSize'
+  | 'prefixSize'
+  | 'suffixSize'
+  | 'prefixColor'
+  | 'suffixColor';
+
+type OverrideState = Record<OverrideKey, boolean>;
+
+const initialOverrides: OverrideState = {
+  bg: false,
+  textColor: false,
+  border: false,
+  fontSize: false,
+  prefixSize: false,
+  suffixSize: false,
+  prefixColor: false,
+  suffixColor: false,
+};
+
+function overrideReducer(state: OverrideState, key: OverrideKey) {
+  return { ...state, [key]: !state[key] };
+}
+
 export const OverrideViaClassName = () => {
-  const [overrideBg, setOverrideBg] = useState(false);
-  const [overrideTextColor, setOverrideTextColor] = useState(false);
-  const [overrideBorder, setOverrideBorder] = useState(false);
-  const [overrideFontSize, setOverrideFontSize] = useState(false);
-  const [overridePrefixSize, setOverridePrefixSize] = useState(false);
-  const [overrideSuffixSize, setOverrideSuffixSize] = useState(false);
-  const [overridePrefixColor, setOverridePrefixColor] = useState(false);
-  const [overrideSuffixColor, setOverrideSuffixColor] = useState(false);
+  const [overrides, dispatch] = useReducer(overrideReducer, initialOverrides);
+
+  const toggle = (key: OverrideKey) => dispatch(key);
 
   return (
     <div>
       <div className={styles.settings}>
-        <section>
-          <span>Override background color</span>
-          <Switch checked={overrideBg} onChange={setOverrideBg} />
-        </section>
-
-        <section>
-          <span>Override text color</span>
-          <Switch checked={overrideTextColor} onChange={setOverrideTextColor} />
-        </section>
-
-        <section>
-          <span>Override border color</span>
-          <Switch checked={overrideBorder} onChange={setOverrideBorder} />
-        </section>
-
-        <section>
-          <span>Override font size</span>
-          <Switch checked={overrideFontSize} onChange={setOverrideFontSize} />
-        </section>
-
-        <section>
-          <span>Override prefix size</span>
-          <Switch
-            checked={overridePrefixSize}
-            onChange={setOverridePrefixSize}
-          />
-        </section>
-
-        <section>
-          <span>Override suffix size</span>
-          <Switch
-            checked={overrideSuffixSize}
-            onChange={setOverrideSuffixSize}
-          />
-        </section>
-
-        <section>
-          <span>Override prefix color</span>
-          <Switch
-            checked={overridePrefixColor}
-            onChange={setOverridePrefixColor}
-          />
-        </section>
-
-        <section>
-          <span>Override suffix color</span>
-          <Switch
-            checked={overrideSuffixColor}
-            onChange={setOverrideSuffixColor}
-          />
-        </section>
+        {(
+          [
+            ['Override background color', 'bg'],
+            ['Override text color', 'textColor'],
+            ['Override border color', 'border'],
+            ['Override font size', 'fontSize'],
+            ['Override prefix size', 'prefixSize'],
+            ['Override suffix size', 'suffixSize'],
+            ['Override prefix color', 'prefixColor'],
+            ['Override suffix color', 'suffixColor'],
+          ] as const
+        ).map(([label, key]) => (
+          <section key={key}>
+            <span>{label}</span>
+            <Switch checked={overrides[key]} onChange={() => toggle(key)} />
+          </section>
+        ))}
       </div>
 
       <Groups
         prefix={<FolderIcon />}
         suffix={<ArrowRightBigIcon />}
         className={clsx({
-          [styles.overrideBackground]: overrideBg,
-          [styles.overrideTextColor]: overrideTextColor,
-          [styles.overrideBorder]: overrideBorder,
-          [styles.overrideFontSize]: overrideFontSize,
+          [styles.overrideBackground]: overrides.bg,
+          [styles.overrideTextColor]: overrides.textColor,
+          [styles.overrideBorder]: overrides.border,
+          [styles.overrideFontSize]: overrides.fontSize,
         })}
         prefixClassName={clsx({
-          [styles.overrideIconSize]: overridePrefixSize,
-          [styles.overrideIconColor]: overridePrefixColor,
+          [styles.overrideIconSize]: overrides.prefixSize,
+          [styles.overrideIconColor]: overrides.prefixColor,
         })}
         suffixClassName={clsx({
-          [styles.overrideIconSize]: overrideSuffixSize,
-          [styles.overrideIconColor]: overrideSuffixColor,
+          [styles.overrideIconSize]: overrides.suffixSize,
+          [styles.overrideIconColor]: overrides.suffixColor,
         })}
       />
     </div>
