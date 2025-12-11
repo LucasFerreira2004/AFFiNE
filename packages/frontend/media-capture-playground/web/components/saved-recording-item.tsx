@@ -892,3 +892,9 @@ export function SavedRecordingItem({
     </div>
   );
 }
+
+export type Nullable<T> = T | null;
+export type NullableReactElement = Nullable<ReactElement>;
+export type NullableString = Nullable<string>;
+export type NullableHTMLAudioElement = Nullable<HTMLAudioElement>
+export type NullableHTMLDivElement = Nullable<HTMLDivElement>
