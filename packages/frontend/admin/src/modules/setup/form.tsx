@@ -17,8 +17,8 @@ import { CreateAdmin } from './create-admin';
 
 export enum CarouselSteps {
   Welcome = 0,
-  CreateAdmin,
-  SettingsDone,
+  CreateAdmin = 1,
+  SettingsDone = 2,
 }
 
 const Welcome = () => {
