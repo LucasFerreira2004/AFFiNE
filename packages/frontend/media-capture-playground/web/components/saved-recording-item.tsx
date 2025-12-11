@@ -29,7 +29,7 @@ function AudioControls({
   onSeek,
   onPlayPause,
 }: {
-  audioRef: React.RefObject<HTMLAudioElement | null>;
+  audioRef: React.RefObject<NullableHTMLAudioElement>;
   playbackRate: number;
   onPlaybackRateChange: () => void;
   onSeek: (seconds: number) => void;
@@ -106,7 +106,7 @@ function WaveformVisualizer({
   currentTime,
   fileName,
 }: {
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: React.RefObject<NullableHTMLDivElement>;
   waveformData: number[];
   currentTime: number;
   fileName: string;
@@ -261,9 +261,9 @@ function TranscriptionStatus({
   currentAudioTime,
 }: {
   transcription?: TranscriptionMetadata;
-  transcriptionError: string | null;
+  transcriptionError: NullableString;
   currentAudioTime: number;
-}): ReactElement | null {
+}): NullableReactElement {
   if (!transcription && !transcriptionError) {
     return null;
   }
@@ -370,12 +370,12 @@ function RecordingHeader({
   fileName: string;
   recordingDate: string;
   duration: string;
-  error: string | null;
+  error: NullableString;
   isDeleting: boolean;
   showDeleteConfirm: boolean;
   setShowDeleteConfirm: (show: boolean) => void;
   handleDeleteClick: () => void;
-  transcriptionError: string | null;
+  transcriptionError: NullableString;
 }): ReactElement {
   const [imgError, setImgError] = React.useState(false);
   const isGlobalRecording = metadata?.isGlobal;
@@ -477,7 +477,7 @@ function AudioPlayer({
   fileName,
 }: {
   isLoading: boolean;
-  error: string | null;
+  error: NullableString;
   audioRef: React.RefObject<HTMLAudioElement>;
   playbackRate: number;
   handlePlaybackRateChange: () => void;
@@ -574,19 +574,19 @@ function TranscribeButton({
 export function SavedRecordingItem({
   recording,
 }: SavedRecordingItemProps): ReactElement {
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<NullableString>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [playbackRate, setPlaybackRate] = React.useState(1);
   const [waveformData, setWaveformData] = React.useState<number[]>([]);
   const [currentTime, setCurrentTime] = React.useState(0);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const audioRef = React.useRef<NullableHTMLAudioElement>(null);
+  const containerRef = React.useRef<NullableHTMLDivElement>(null);
   const [segments, setSegments] = React.useState(40);
   const [currentAudioTime, setCurrentAudioTime] = React.useState(0);
   const [transcriptionError, setTranscriptionError] = React.useState<
-    string | null
+    NullableString
   >(null);
 
   const metadata = recording.metadata;
