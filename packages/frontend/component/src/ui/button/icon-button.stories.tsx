@@ -58,46 +58,61 @@ export const Loading = () => {
   const toggleLoading = useCallback(() => setLoading(v => !v), []);
 
   useEffect(() => {
-    setInterval(toggleLoading, 1000);
+    const id = setInterval(toggleLoading, 1000);
+    return () => clearInterval(id);
   }, [toggleLoading]);
 
   return <Groups loading={loading} />;
 };
 
+type OverrideState = {
+  bg: boolean;
+  border: boolean;
+  prefixColor: boolean;
+};
+
 export const OverrideViaClassName = () => {
-  const [overrideBg, setOverrideBg] = useState(false);
-  const [overrideBorder, setOverrideBorder] = useState(false);
-  const [overridePrefixColor, setOverridePrefixColor] = useState(false);
+  const [overrides, setOverrides] = useState<OverrideState>({
+    bg: false,
+    border: false,
+    prefixColor: false,
+  });
+
+  const updateOverride = (key: keyof OverrideState) => (value: boolean) =>
+    setOverrides(prev => ({ ...prev, [key]: value }));
 
   return (
     <div>
       <div className={styles.settings}>
         <section>
           <span>Override background color</span>
-          <Switch checked={overrideBg} onChange={setOverrideBg} />
+          <Switch checked={overrides.bg} onChange={updateOverride('bg')} />
         </section>
 
         <section>
           <span>Override border color</span>
-          <Switch checked={overrideBorder} onChange={setOverrideBorder} />
+          <Switch
+            checked={overrides.border}
+            onChange={updateOverride('border')}
+          />
         </section>
 
         <section>
           <span>Override icon color</span>
           <Switch
-            checked={overridePrefixColor}
-            onChange={setOverridePrefixColor}
+            checked={overrides.prefixColor}
+            onChange={updateOverride('prefixColor')}
           />
         </section>
       </div>
 
       <Groups
         className={clsx({
-          [styles.overrideBackground]: overrideBg,
-          [styles.overrideBorder]: overrideBorder,
+          [styles.overrideBackground]: overrides.bg,
+          [styles.overrideBorder]: overrides.border,
         })}
         iconClassName={clsx({
-          [styles.overrideIconColor]: overridePrefixColor,
+          [styles.overrideIconColor]: overrides.prefixColor,
         })}
       />
     </div>
