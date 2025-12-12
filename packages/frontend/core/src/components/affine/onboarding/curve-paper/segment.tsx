@@ -2,7 +2,9 @@ import type { PropsWithChildren, ReactNode } from 'react';
 
 import * as styles from './paper.css';
 
-export interface SegmentProps extends PropsWithChildren {
+export interface SegmentProps
+  extends PropsWithChildren,
+    React.HTMLAttributes<HTMLDivElement> {
   index: number;
   level?: number;
   direction?: 'up' | 'down';
@@ -10,8 +12,6 @@ export interface SegmentProps extends PropsWithChildren {
 
   isTop?: boolean;
   isBottom?: boolean;
-
-  [key: string]: any;
 }
 
 export function Segment({
@@ -22,9 +22,14 @@ export function Segment({
   level,
   isTop,
   isBottom,
+  style,
   ...attrs
 }: SegmentProps) {
-  const style = { '--index': index } as React.CSSProperties;
+  const computedStyle = {
+    ...style,
+    '--index': index,
+  } as React.CSSProperties;
+
   return (
     <div
       className={styles.segment}
@@ -34,7 +39,7 @@ export function Segment({
       data-top={(direction === 'up' && level === 1) || isTop}
       {...attrs}
     >
-      <div className={styles.contentWrapper} style={style}>
+      <div className={styles.contentWrapper} style={computedStyle}>
         <div className={styles.content}>{content}</div>
       </div>
       {children}
