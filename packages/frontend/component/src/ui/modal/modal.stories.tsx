@@ -37,35 +37,42 @@ Default.args = {
 };
 
 const wait = () => new Promise(resolve => setTimeout(resolve, 1000));
+
 const ConfirmModalTemplate: StoryFn<ConfirmModalProps> = () => {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [inputStatus, setInputStatus] =
-    useState<InputProps['status']>('default');
+  const [state, setState] = useState({
+    open: false,
+    loading: false,
+    inputStatus: 'default' as InputProps['status'],
+  });
+
+  const setOpen = (val: boolean) => setState(prev => ({ ...prev, open: val }));
 
   const handleConfirm = useCallback(async () => {
-    setLoading(true);
+    setState(prev => ({ ...prev, loading: true }));
     await wait();
-    setInputStatus(inputStatus !== 'error' ? 'error' : 'success');
-    setLoading(false);
-  }, [inputStatus]);
+    setState(prev => ({
+      ...prev,
+      inputStatus: prev.inputStatus !== 'error' ? 'error' : 'success',
+      loading: false,
+    }));
+  }, [state.inputStatus]);
 
   return (
     <>
       <Button onClick={() => setOpen(true)}>Open Confirm Modal</Button>
       <ConfirmModal
-        open={open}
+        open={state.open}
         onOpenChange={setOpen}
         onConfirm={handleConfirm}
         title="Modal Title"
         description="Modal description"
         confirmText="Confirm"
         confirmButtonOptions={{
-          loading: loading,
+          loading: state.loading,
           variant: 'primary',
         }}
       >
-        <Input placeholder="input someting" status={inputStatus} />
+        <Input placeholder="input someting" status={state.inputStatus} />
       </ConfirmModal>
     </>
   );
@@ -108,64 +115,77 @@ export const Overlay: StoryFn<ModalProps> =
   OverlayModalTemplate.bind(undefined);
 
 export const Animations = () => {
-  const animations = ['fadeScaleTop', 'slideBottom', 'none'];
-  const [open, setOpen] = useState(false);
-  const [animation, setAnimation] =
-    useState<ModalProps['animation']>('fadeScaleTop');
+  const animations: ModalProps['animation'][] = [
+    'fadeScaleTop',
+    'slideBottom',
+    'none',
+  ];
+
+  const [state, setState] = useState({
+    open: false,
+    animation: 'fadeScaleTop' as ModalProps['animation'],
+  });
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <RadioGroup
-        value={animation}
-        onChange={setAnimation}
+        value={state.animation}
+        onChange={val => setState(prev => ({ ...prev, animation: val }))}
         items={animations}
       />
-      <Button onClick={() => setOpen(true)}>Open dialog</Button>
+      <Button onClick={() => setState(prev => ({ ...prev, open: true }))}>
+        Open dialog
+      </Button>
       <Modal
         contentWrapperStyle={
-          animation === 'slideBottom'
-            ? {
-                alignItems: 'end',
-                padding: 10,
-              }
+          state.animation === 'slideBottom'
+            ? { alignItems: 'end', padding: 10 }
             : {}
         }
-        open={open}
-        onOpenChange={setOpen}
-        animation={animation}
+        open={state.open}
+        onOpenChange={val => setState(prev => ({ ...prev, open: val }))}
+        animation={state.animation}
       >
-        This is a dialog with animation: {animation}
+        This is a dialog with animation: {state.animation}
       </Modal>
     </div>
   );
 };
 
 export const Nested = () => {
-  const [openRoot, setOpenRoot] = useState(false);
-  const [openNested, setOpenNested] = useState(false);
+  const [state, setState] = useState({
+    openRoot: false,
+    openNested: false,
+  });
 
   return (
     <>
-      <Button onClick={() => setOpenRoot(true)}>Open Root Modal</Button>
+      <Button onClick={() => setState(prev => ({ ...prev, openRoot: true }))}>
+        Open Root Modal
+      </Button>
       <Modal
         animation="slideBottom"
-        open={openRoot}
-        onOpenChange={setOpenRoot}
+        open={state.openRoot}
+        onOpenChange={val => setState(prev => ({ ...prev, openRoot: val }))}
         contentOptions={{
           style: {
             transition: 'all .3s ease 0.1s',
-            transform: openNested
+            transform: state.openNested
               ? `scale(0.95) translateY(-20px)`
               : 'scale(1) translateY(0)',
           },
         }}
       >
-        <Button onClick={() => setOpenNested(true)}>Open Nested Modal</Button>
+        <Button
+          onClick={() => setState(prev => ({ ...prev, openNested: true }))}
+        >
+          Open Nested Modal
+        </Button>
       </Modal>
       <Modal
         animation="slideBottom"
-        open={openNested}
-        onOpenChange={setOpenNested}
+        open={state.openNested}
+        onOpenChange={val => setState(prev => ({ ...prev, openNested: val }))}
         overlayOptions={{ style: { background: 'transparent' } }}
       >
         Nested Modal
