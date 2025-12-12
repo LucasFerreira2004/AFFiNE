@@ -21,11 +21,45 @@ import {
   DowngradeTeamModal,
 } from './modals';
 
-/**
- * Cancel action with modal & request
- * @param param0
- * @returns
- */
+const useSubscriptionAction = ({
+  subscription,
+  type,
+  plan,
+  onOpenChange,
+  after,
+}: {
+  subscription: any;
+  type: 'cancel' | 'resume';
+  plan: SubscriptionPlan;
+  onOpenChange: (open: boolean) => void;
+  after?: () => void;
+}) => {
+  const [idempotencyKey, setIdempotencyKey] = useState(nanoid());
+  const [isMutating, setIsMutating] = useState(false);
+
+  const action = useAsyncCallback(async () => {
+    try {
+      setIsMutating(true);
+
+      if (type === 'cancel') {
+        await subscription.cancelSubscription(idempotencyKey, plan);
+      } else {
+        await subscription.resumeSubscription(idempotencyKey, plan);
+      }
+
+      await subscription.waitForRevalidation();
+      setIdempotencyKey(nanoid());
+      onOpenChange(false);
+
+      after?.();
+    } finally {
+      setIsMutating(false);
+    }
+  }, [subscription, idempotencyKey, onOpenChange, after, type, plan]);
+
+  return { isMutating, action };
+};
+
 export const CancelAction = ({
   children,
   open,
@@ -34,38 +68,37 @@ export const CancelAction = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 } & PropsWithChildren) => {
-  const [idempotencyKey, setIdempotencyKey] = useState(nanoid());
-  const [isMutating, setIsMutating] = useState(false);
   const subscription = useService(SubscriptionService).subscription;
   const proSubscription = useLiveData(subscription.pro$);
-  const authService = useService(AuthService);
+  const auth = useService(AuthService);
   const downgradeNotify = useDowngradeNotify();
 
   useEffect(() => {
-    if (!open || !proSubscription) return;
-    track.$.settingsPanel.plans.cancelSubscription({
-      plan: proSubscription.plan,
-      recurring: proSubscription.recurring,
-    });
+    if (open && proSubscription) {
+      track.$.settingsPanel.plans.cancelSubscription({
+        plan: proSubscription.plan,
+        recurring: proSubscription.recurring,
+      });
+    }
   }, [open, proSubscription]);
 
-  const downgrade = useAsyncCallback(async () => {
-    try {
-      const account = authService.session.account$.value;
-      const prevRecurring = subscription.pro$.value?.recurring;
-      setIsMutating(true);
-      await subscription.cancelSubscription(idempotencyKey);
-      await subscription.waitForRevalidation();
-      // refresh idempotency key
-      setIdempotencyKey(nanoid());
-      onOpenChange(false);
-      const proSubscription = subscription.pro$.value;
-      if (proSubscription) {
+  const { isMutating, action } = useSubscriptionAction({
+    subscription,
+    type: 'cancel',
+    plan: SubscriptionPlan.Pro,
+    onOpenChange,
+    after: () => {
+      const account = auth.session.account$.value;
+      const prevRecurring = proSubscription?.recurring;
+
+      const current = subscription.pro$.value;
+      if (current) {
         track.$.settingsPanel.plans.confirmCancelingSubscription({
-          plan: proSubscription.plan,
-          recurring: proSubscription.recurring,
+          plan: current.plan,
+          recurring: current.recurring,
         });
       }
+
       if (account && prevRecurring) {
         downgradeNotify(
           getDowngradeQuestionnaireLink({
@@ -77,23 +110,15 @@ export const CancelAction = ({
           })
         );
       }
-    } finally {
-      setIsMutating(false);
-    }
-  }, [
-    authService.session.account$.value,
-    subscription,
-    idempotencyKey,
-    onOpenChange,
-    downgradeNotify,
-  ]);
+    },
+  });
 
   return (
     <>
       {children}
       <DowngradeModal
         open={open}
-        onCancel={downgrade}
+        onCancel={action}
         onOpenChange={onOpenChange}
         loading={isMutating}
       />
@@ -109,26 +134,19 @@ export const CancelTeamAction = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 } & PropsWithChildren) => {
-  const [idempotencyKey, setIdempotencyKey] = useState(nanoid());
-  const [isMutating, setIsMutating] = useState(false);
   const subscription = useService(WorkspaceSubscriptionService).subscription;
   const workspaceSubscription = useLiveData(subscription.subscription$);
-  const authService = useService(AuthService);
+  const auth = useService(AuthService);
   const downgradeNotify = useDowngradeNotify();
 
-  const downgrade = useAsyncCallback(async () => {
-    try {
-      const account = authService.session.account$.value;
+  const { isMutating, action } = useSubscriptionAction({
+    subscription,
+    type: 'cancel',
+    plan: SubscriptionPlan.Team,
+    onOpenChange,
+    after: () => {
+      const account = auth.session.account$.value;
       const prevRecurring = workspaceSubscription?.recurring;
-      setIsMutating(true);
-      await subscription.cancelSubscription(
-        idempotencyKey,
-        SubscriptionPlan.Team
-      );
-      await subscription.waitForRevalidation();
-      // refresh idempotency key
-      setIdempotencyKey(nanoid());
-      onOpenChange(false);
 
       if (account && prevRecurring) {
         downgradeNotify(
@@ -141,20 +159,11 @@ export const CancelTeamAction = ({
           })
         );
       }
-    } finally {
-      setIsMutating(false);
-    }
-  }, [
-    authService,
-    workspaceSubscription?.recurring,
-    subscription,
-    idempotencyKey,
-    onOpenChange,
-    downgradeNotify,
-  ]);
+    },
+  });
 
   if (workspaceSubscription?.canceledAt) {
-    return null;
+    return <>{children}</>;
   }
 
   return (
@@ -162,7 +171,7 @@ export const CancelTeamAction = ({
       {children}
       <DowngradeTeamModal
         open={open}
-        onCancel={downgrade}
+        onCancel={action}
         onOpenChange={onOpenChange}
         loading={isMutating}
       />
@@ -170,11 +179,6 @@ export const CancelTeamAction = ({
   );
 };
 
-/**
- * Resume payment action with modal & request
- * @param param0
- * @returns
- */
 export const ResumeAction = ({
   children,
   open,
@@ -183,44 +187,38 @@ export const ResumeAction = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 } & PropsWithChildren) => {
-  // allow replay request on network error until component unmount or success
-  const [idempotencyKey, setIdempotencyKey] = useState(nanoid());
-  const [isMutating, setIsMutating] = useState(false);
   const subscription = useService(SubscriptionService).subscription;
 
-  const resume = useAsyncCallback(async () => {
-    try {
-      setIsMutating(true);
-      await subscription.resumeSubscription(idempotencyKey);
-      await subscription.waitForRevalidation();
-      // refresh idempotency key
-      setIdempotencyKey(nanoid());
-      onOpenChange(false);
-      const proSubscription = subscription.pro$.value;
-      if (proSubscription) {
+  const { isMutating, action } = useSubscriptionAction({
+    subscription,
+    type: 'resume',
+    plan: SubscriptionPlan.Pro,
+    onOpenChange,
+    after: () => {
+      const current = subscription.pro$.value;
+      if (current) {
         track.$.settingsPanel.plans.confirmResumingSubscription({
-          plan: proSubscription.plan,
-          recurring: proSubscription.recurring,
+          plan: current.plan,
+          recurring: current.recurring,
         });
       }
-    } finally {
-      setIsMutating(false);
-    }
-  }, [subscription, idempotencyKey, onOpenChange]);
+    },
+  });
 
   return (
     <>
       {children}
       <ConfirmLoadingModal
-        type={'resume'}
+        type="resume"
         open={open}
-        onConfirm={resume}
+        onConfirm={action}
         onOpenChange={onOpenChange}
         loading={isMutating}
       />
     </>
   );
 };
+
 export const TeamResumeAction = ({
   children,
   open,
@@ -229,39 +227,29 @@ export const TeamResumeAction = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 } & PropsWithChildren) => {
-  // allow replay request on network error until component unmount or success
-  const [idempotencyKey, setIdempotencyKey] = useState(nanoid());
-  const [isMutating, setIsMutating] = useState(false);
   const subscription = useService(WorkspaceSubscriptionService).subscription;
   const t = useI18n();
 
-  const resume = useAsyncCallback(async () => {
-    try {
-      setIsMutating(true);
-      await subscription.resumeSubscription(
-        idempotencyKey,
-        SubscriptionPlan.Team
-      );
-      await subscription.waitForRevalidation();
-      // refresh idempotency key
-      setIdempotencyKey(nanoid());
-      onOpenChange(false);
+  const { isMutating, action } = useSubscriptionAction({
+    subscription,
+    type: 'resume',
+    plan: SubscriptionPlan.Team,
+    onOpenChange,
+    after: () => {
       notify.success({
         title: t['com.affine.payment.resume.success.title'](),
         message: t['com.affine.payment.resume.success.team.message'](),
       });
-    } finally {
-      setIsMutating(false);
-    }
-  }, [subscription, idempotencyKey, onOpenChange, t]);
+    },
+  });
 
   return (
     <>
       {children}
       <ConfirmLoadingModal
-        type={'resume'}
+        type="resume"
         open={open}
-        onConfirm={resume}
+        onConfirm={action}
         onOpenChange={onOpenChange}
         loading={isMutating}
       />
