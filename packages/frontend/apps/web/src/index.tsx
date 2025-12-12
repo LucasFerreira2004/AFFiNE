@@ -7,8 +7,12 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app';
 
 function mountApp() {
-  // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const root = document.getElementById('app')!;
+  const root = document.getElementById('app');
+
+  if (!root) {
+    throw new Error('Root element #app not found');
+  }
+
   createRoot(root).render(
     <StrictMode>
       <Telemetry />
