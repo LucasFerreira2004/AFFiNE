@@ -549,8 +549,15 @@ export const ReorderableTree: StoryFn = () => {
         return null;
       };
 
-      const nodePosition = findNode(clonedTree, data.source.data.node.id)!;
-      const dropAtPosition = findNode(clonedTree, data.dropAt.id)!;
+      const nodePosition = findNode(clonedTree, data.source.data.node.id);
+      if (!nodePosition) {
+        throw new Error('Source node not found');
+      }
+
+      const dropAtPosition = findNode(clonedTree, data.dropAt.id);
+      if (!dropAtPosition) {
+        throw new Error('DropAt node not found');
+      }
 
       // delete the node from the tree
       nodePosition.parent.children.splice(nodePosition.index, 1);
@@ -570,10 +577,19 @@ export const ReorderableTree: StoryFn = () => {
             data.treeInstruction.desiredLevel -
             1;
 
-          let parentPosition = findNode(clonedTree, dropAtPosition.parent.id)!;
-          for (let i = 0; i < up; i++) {
-            parentPosition = findNode(clonedTree, parentPosition.parent.id)!;
+          let parentPosition = findNode(clonedTree, dropAtPosition.parent.id);
+          if (!parentPosition) {
+            throw new Error("Parent node not found at initial position");
           }
+
+          for (let i = 0; i < up; i++) {
+            const next = findNode(clonedTree, parentPosition.parent.id);
+            if (!next) {
+              throw new Error("Parent node not found during upward traversal");
+            }
+            parentPosition = next;
+          }
+
           parentPosition.parent.children.splice(
             parentPosition.index + 1,
             0,
