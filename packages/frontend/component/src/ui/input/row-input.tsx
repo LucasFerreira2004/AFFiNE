@@ -25,8 +25,6 @@ export type RowInputProps = {
   debounce?: number;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'size' | 'onBlur'>;
 
-// RowInput component that is used in the selector layout for search input
-// handles composition events and enter key press
 export const RowInput = forwardRef<HTMLInputElement, RowInputProps>(
   function RowInput(
     {
@@ -63,15 +61,23 @@ export const RowInput = forwardRef<HTMLInputElement, RowInputProps>(
       [focusRef, selectRef, upstreamRef]
     );
 
-    // use native blur event to get event after unmount
-    // don't use useLayoutEffect here, because the cleanup function will be called before unmount
+    // Adaptador tipado para listeners nativos
     useEffect(() => {
       if (!onBlur) return;
-      selectRef.current?.addEventListener('blur', onBlur as any);
-      return () => {
-        // oxlint-disable-next-line react-hooks/exhaustive-deps
-        selectRef.current?.removeEventListener('blur', onBlur as any);
+
+      const handler = (ev: FocusEvent) => {
+        if (ev.target instanceof HTMLInputElement) {
+          onBlur({
+            ...ev,
+            currentTarget: ev.target,
+          } as FocusEvent & { currentTarget: HTMLInputElement });
+        }
       };
+
+      const element = selectRef.current;
+      element?.addEventListener('blur', handler);
+
+      return () => element?.removeEventListener('blur', handler);
     }, [onBlur, selectRef]);
 
     const handleChange = useCallback(
@@ -80,6 +86,7 @@ export const RowInput = forwardRef<HTMLInputElement, RowInputProps>(
       },
       [propsOnChange]
     );
+
     const debounceHandleChange = useDebounceCallback(handleChange, debounce);
 
     const handleKeyDown = useCallback(

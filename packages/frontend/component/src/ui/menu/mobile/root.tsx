@@ -3,6 +3,8 @@ import { ArrowLeftSmallIcon } from '@blocksuite/icons/rc';
 import { Slot } from '@radix-ui/react-slot';
 import clsx from 'clsx';
 import {
+  ForwardedRef,
+  MouseEvent,
   useCallback,
   useContext,
   useEffect,
@@ -23,6 +25,14 @@ import {
 import * as styles from './styles.css';
 import { MobileMenuSubRaw } from './sub';
 
+type PointerOutsideEvent = {
+  originalEvent: PointerEvent;
+};
+
+type InteractOutsideEvent = {
+  originalEvent: Event;
+};
+
 export const MobileMenu = ({
   children,
   items,
@@ -31,11 +41,9 @@ export const MobileMenu = ({
     className,
     onPointerDownOutside,
     onInteractOutside,
-    // ignore the following props
     sideOffset: _sideOffset,
     side: _side,
     align: _align,
-
     ...otherContentOptions
   } = {},
   contentWrapperStyle,
@@ -44,6 +52,7 @@ export const MobileMenu = ({
 }: MenuProps) => {
   const [subMenus, setSubMenus] = useState<SubMenuContent[]>([]);
   const [open, setOpen] = useState(false);
+
   const mobileContextValue = {
     subMenus,
     setSubMenus,
@@ -57,21 +66,19 @@ export const MobileMenu = ({
   const [sliderElement, setSliderElement] = useState<HTMLDivElement | null>(
     null
   );
+
   const { setOpen: pSetOpen } = useContext(MobileMenuContext);
   const finalOpen = rootOptions?.open ?? open;
 
-  // always show the last submenu, if any
   const activeIndex = subMenus.length;
 
-  // dynamic height for slider
   useEffect(() => {
     if (sliderElement && finalOpen) {
-      const active = sliderElement.querySelector(
+      const active = sliderElement.querySelector<HTMLElement>(
         `.${styles.menuContent}[data-index="${activeIndex}"]`
       );
       if (!active) return;
 
-      // for the situation that content is loaded asynchronously
       return observeResize(active, entry => {
         setSliderHeight(entry.borderBoxSize[0].blockSize);
       });
@@ -80,16 +87,19 @@ export const MobileMenu = ({
   }, [activeIndex, finalOpen, sliderElement]);
 
   const onOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        // a workaround to hack the onPointerDownOutside event
-        onPointerDownOutside?.({} as any);
-        onInteractOutside?.({} as any);
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        onPointerDownOutside?.({
+          originalEvent: new PointerEvent('pointerdown'),
+        });
+        onInteractOutside?.({ originalEvent: new Event('click') });
         removeAllSubMenus();
       }
-      setOpen(open);
-      rootOptions?.onOpenChange?.(open);
-      if (!open) {
+
+      setOpen(nextOpen);
+      rootOptions?.onOpenChange?.(nextOpen);
+
+      if (!nextOpen) {
         rootOptions?.onClose?.();
       }
     },
@@ -97,17 +107,17 @@ export const MobileMenu = ({
   );
 
   useImperativeHandle(
-    ref,
+    ref as ForwardedRef<{ changeOpen(open: boolean): void }>,
     () => ({
-      changeOpen: (open: boolean) => {
-        onOpenChange(open);
+      changeOpen: (nextOpen: boolean) => {
+        onOpenChange(nextOpen);
       },
     }),
     [onOpenChange]
   );
 
   const onItemClick = useCallback(
-    (e: any) => {
+    (e: MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
       onOpenChange(!open);
     },
@@ -115,19 +125,6 @@ export const MobileMenu = ({
   );
 
   const t = useI18n();
-
-  /**
-   * For cascading menu usage
-   * ```tsx
-   * <Menu
-   *  items={
-   *    <Menu>Click me</Menu>
-   *  }
-   * >
-   *  Root
-   * </Menu>
-   * ```
-   */
   if (pSetOpen) {
     return (
       <MobileMenuSubRaw title={title} items={items} subOptions={rootOptions}>
@@ -139,6 +136,7 @@ export const MobileMenu = ({
   return (
     <>
       <Slot onClick={onItemClick}>{children}</Slot>
+
       <MobileMenuContext.Provider
         value={{ subMenus, setSubMenus, setOpen: onOpenChange }}
       >
@@ -166,6 +164,7 @@ export const MobileMenu = ({
             <div data-index={0} className={styles.menuContent}>
               {items}
             </div>
+
             {subMenus.map((sub, index) => (
               <div
                 key={sub.id}
@@ -177,13 +176,12 @@ export const MobileMenu = ({
                   variant="plain"
                   className={styles.backButton}
                   prefix={<ArrowLeftSmallIcon />}
-                  onClick={() => {
-                    removeSubMenu(sub.id);
-                  }}
+                  onClick={() => removeSubMenu(sub.id)}
                   prefixStyle={{ width: 24, height: 24 }}
                 >
                   {sub.title || t['com.affine.backButton']()}
                 </Button>
+
                 <Scrollable.Root>
                   <Scrollable.Viewport className={styles.scrollArea}>
                     {sub.items}

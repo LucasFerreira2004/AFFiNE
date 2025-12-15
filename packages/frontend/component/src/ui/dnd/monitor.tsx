@@ -23,13 +23,7 @@ type MonitorGet<T, D extends DNDData = DNDData> =
   | ((data: MonitorGetFeedback<D>) => T);
 
 export type MonitorDragEvent<D extends DNDData = DNDData> = {
-  /**
-   * Location history for the drag operation
-   */
   location: DragLocationHistory;
-  /**
-   * Data associated with the entity that is being dragged
-   */
   source: Exclude<ElementDragType['payload'], 'data'> & {
     data: D['draggable'];
   };
@@ -41,60 +35,50 @@ export interface MonitorOptions<D extends DNDData = DNDData> {
   onDrag?: (data: MonitorDragEvent<D>) => void;
   onDrop?: (data: MonitorDragEvent<D>) => void;
   onDropTargetChange?: (data: MonitorDragEvent<D>) => void;
-  /**
-   * external data adapter.
-   * Will use the external data adapter from the context if not provided.
-   */
   fromExternalData?: fromExternalData<D>;
-  /**
-   * Make the drop target allow external data.
-   * If this is undefined, it will be set to true if fromExternalData is provided.
-   *
-   * @default undefined
-   */
   allowExternal?: boolean;
 }
 
 function monitorGet<D extends DNDData, T>(
-  get: T,
+  get: MonitorGet<T, D> | undefined,
   options: MonitorOptions<D>
-): T extends undefined
-  ? undefined
-  : T extends MonitorGet<infer I>
-    ? (args: MonitorGetFeedback<D>) => I
-    : never {
+): ((args: MonitorGetFeedback<D>) => T) | undefined {
   if (get === undefined) {
-    return undefined as any;
+    return undefined;
   }
-  return ((args: MonitorGetFeedback<D>) => {
+
+  return (args: MonitorGetFeedback<D>) => {
     const adaptedArgs = getAdaptedEventArgs(args, options.fromExternalData);
-    return typeof get === 'function'
-      ? (get as any)(adaptedArgs)
-      : {
-          ...adaptedArgs,
-          ...get,
-        };
-  }) as any;
+
+    if (typeof get === 'function') {
+      return get(adaptedArgs);
+    }
+
+    return {
+      ...adaptedArgs,
+      ...get,
+    } as T;
+  };
 }
 
 export const useDndMonitor = <D extends DNDData = DNDData>(
   getOptions: () => MonitorOptions<D> = () => ({}),
-  deps: any[] = []
+  deps: unknown[] = []
 ) => {
   const dropTargetContext = useContext(DNDContext);
 
   const options = useMemo(() => {
     const opts = getOptions();
     const allowExternal = opts.allowExternal ?? !!opts.fromExternalData;
+
     return {
       ...opts,
       allowExternal,
       fromExternalData: allowExternal
         ? (opts.fromExternalData ??
-          (dropTargetContext.fromExternalData as fromExternalData<D>))
+            (dropTargetContext.fromExternalData as fromExternalData<D>))
         : undefined,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, getOptions, dropTargetContext.fromExternalData]);
 
   const monitorOptions = useMemo(() => {
@@ -112,10 +96,8 @@ export const useDndMonitor = <D extends DNDData = DNDData>(
   }, [monitorOptions]);
 
   useEffect(() => {
-    if (!options.fromExternalData) {
-      return;
-    }
-    // @ts-expect-error external & element adapter types have some subtle differences
+    if (!options.fromExternalData) return;
+
     return monitorForExternal(monitorOptions);
   }, [monitorOptions, options.fromExternalData]);
 };

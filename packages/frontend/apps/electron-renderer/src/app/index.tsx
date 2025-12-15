@@ -8,8 +8,6 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app';
 
 function main() {
-  // load persistent config for electron
-  // TODO(@Peng): should be sync, but it's not necessary for now
   appConfigProxy
     .getSync()
     .catch(() => console.error('failed to load app config'));
@@ -18,8 +16,13 @@ function main() {
 }
 
 function mountApp() {
-  // oxlint-disable-next-line typescript-eslint/no-non-null-assertion
-  const root = document.getElementById('app')!;
+  const root = document.getElementById('app');
+
+  if (!root) {
+    console.error('Root element #app not found — unable to mount React app.');
+    return;
+  }
+
   createRoot(root).render(
     <StrictMode>
       <Telemetry />

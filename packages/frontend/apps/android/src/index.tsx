@@ -11,8 +11,13 @@ import { NbStoreNativeDBApis } from './plugins/nbstore';
 bindNativeDBApis(NbStoreNativeDBApis);
 
 function mountApp() {
-  // oxlint-disable-next-line no-non-null-assertion
-  const root = document.getElementById('app')!;
+  const root = document.getElementById('app');
+
+  if (!root) {
+    console.error('Root element #app not found — unable to mount React app.');
+    return;
+  }
+
   createRoot(root).render(
     <StrictMode>
       <Telemetry />
